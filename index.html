@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Bouncing Balls with Flinging and Header Text</title>
+    <style>
+        body, html {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background-color: transparent;
+            width: 100%;
+            height: 100%;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        function resizeCanvas() {
+            // Resize the canvas to fit the window
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            textCanvas.width = canvas.width;
+            textCanvas.height = canvas.height;
+            textPosition.x = 10;
+            textPosition.y = textCanvas.height - 50;
+            adjustFontSize();
+            drawText();
+        }
+
+        function adjustFontSize() {
+            // Adjust the font size of the text to fit the canvas width
+            const maxFontSize = 100;
+            let fontSize = maxFontSize;
+            textCtx.font = `${fontSize}px "Bebas Neue"`;
+            let textWidth = textCtx.measureText(text).width;
+            while (textWidth > textCanvas.width - 20 && fontSize > 10) {
+                fontSize -= 1;
+                textCtx.font = `${fontSize}px "Bebas Neue"`;
+                textWidth = textCtx.measureText(text).width;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        let balls = [];
+        const numSmallBalls = 10; // Number of balls
+        let isDragging = false;
+        let dragBall = null;
+        let lastMouseX, lastMouseY;
+        const friction = 0.99; // Friction coefficient
+        const text = "pbritton.dev"; // Text to display
+        const textCanvas = document.createElement('canvas');
+        const textCtx = textCanvas.getContext('2d', { willReadFrequently: true });
+
+        textCanvas.width = canvas.width;
+        textCanvas.height = canvas.height;
+
+        let textPosition = {
+            x: 10,
+            y: canvas.height - 50
+        };
+
+        function drawText() {
+            // Draw the text on the textCanvas
+            textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+            textCtx.textAlign = 'left';
+            textCtx.textBaseline = 'bottom';
+            textCtx.fillStyle = '#003865';
+            textCtx.font = '100px "Bebas Neue"';
+            textCtx.fillText(text, textPosition.x, textPosition.y);
+        }
+
+        resizeCanvas();
+
+        const colors = ['#003865', '#78BE21', '#5D295F', '#000', '#002469', '#007336'];
+
+        for (let i = 0; i < numSmallBalls; i++) {
+            // Initialize balls with random positions and velocities
+            const color = colors[i % colors.length];
+            balls.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: 10 + Math.random() * 10,
+                color: color,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                isMoving: true
+            });
+        }
+
+        function handleMouseDown(event) {
+            event.preventDefault();
+            const mouseX = event.clientX || event.touches[0].clientX;
+            const mouseY = event.clientY || event.touches[0].clientY;
+
+            // Check if a ball is clicked and enable dragging
+            balls.forEach(ball => {
+                if (Math.hypot(ball.x - mouseX, ball.y - mouseY) <= ball.radius) {
+                    isDragging = true;
+                    dragBall = ball;
+                    lastMouseX = mouseX;
+                    lastMouseY = mouseY;
+                }
+            });
+        }
+
+        function handleMouseMove(event) {
+            event.preventDefault();
+            const mouseX = event.clientX || event.touches[0].clientX;
+            const mouseY = event.clientY || event.touches[0].clientY;
+
+            // Update ball position while dragging
+            if (isDragging) {
+                dragBall.x = mouseX;
+                dragBall.y = mouseY;
+                dragBall.vx = mouseX - lastMouseX;
+                dragBall.vy = mouseY - lastMouseY;
+                dragBall.isMoving = true;
+                lastMouseX = mouseX;
+                lastMouseY = mouseY;
+            }
+        }
+
+        function handleMouseUp(event) {
+            event.preventDefault();
+            isDragging = false;
+            dragBall = null;
+        }
+
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+
+        canvas.addEventListener('touchstart', handleMouseDown, { passive: false });
+        canvas.addEventListener('touchmove', handleMouseMove, { passive: false });
+        canvas.addEventListener('touchend', handleMouseUp);
+
+        function drawBalls() {
+            // Clear the canvas and draw all balls
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(textCanvas, 0, 0);
+            balls.forEach(ball => {
+                ctx.fillStyle = ball.color;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function detectCollisions() {
+            // Detect collisions between balls
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    const ball1 = balls[i];
+                    const ball2 = balls[j];
+                    const dx = ball2.x - ball1.x;
+                    const dy = ball2.y - ball1.y;
+                    const distance = Math.hypot(dx, dy);
+                    const minDistance = ball1.radius + ball2.radius;
+
+                    if (distance < minDistance) {
+                        const angle = Math.atan2(dy, dx);
+                        const totalMass = ball1.radius + ball2.radius;
+                        const v1 = Math.sqrt(ball1.vx * ball1.vx + ball1.vy * ball1.vy);
+                        const v2 = Math.sqrt(ball2.vx * ball2.vx + ball2.vy * ball2.vy);
+
+                        ball1.vx = (v1 * Math.cos(angle) * (ball1.radius - ball2.radius) + (2 * ball2.radius * v2 * Math.cos(angle))) / totalMass;
+                        ball1.vy = (v1 * Math.sin(angle) * (ball1.radius - ball2.radius) + (2 * ball2.radius * v2 * Math.sin(angle))) / totalMass;
+                        ball2.vx = (v2 * Math.cos(angle) * (ball2.radius - ball1.radius) + (2 * ball1.radius * v1 * Math.cos(angle))) / totalMass;
+                        ball2.vy = (v2 * Math.sin(angle) * (ball2.radius - ball1.radius) + (2 * ball1.radius * v1 * Math.sin(angle))) / totalMass;
+
+                        const overlap = minDistance - distance;
+                        const correction = overlap / 2;
+                        ball1.x -= correction * Math.cos(angle);
+                        ball1.y -= correction * Math.sin(angle);
+                        ball2.x += correction * Math.cos(angle);
+                        ball2.y += correction * Math.sin(angle);
+                    }
+                }
+            }
+        }
+
+        function textCollision(ball) {
+            // Detect collision between balls and text
+            const radius = ball.radius;
+            const imageData = textCtx.getImageData(ball.x - radius, ball.y - radius, radius * 2, radius * 2);
+            const pixels = imageData.data;
+            for (let y = 0; y < radius * 2; y++) {
+                for (let x = 0; x < radius * 2; x++) {
+                    const index = (y * radius * 2 + x) * 4;
+                    if (pixels[index + 3] > 128) {
+                        const dx = x - radius;
+                        const dy = y - radius;
+                        const distance = Math.hypot(dx, dy);
+                        if (distance < radius) {
+                            ball.vx = -ball.vx * 0.7;
+                            ball.vy = -ball.vy * 0.7;
+                            ball.x += ball.vx;
+                            ball.y += ball.vy;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function update() {
+            // Update ball positions and detect collisions
+            balls.forEach(ball => {
+                if (!isDragging || ball !== dragBall) {
+                    if (ball.isMoving) {
+                        ball.vy += 0.2;
+                        ball.vx += 0;
+                        ball.vy *= friction;
+                        ball.vx *= friction;
+                        ball.y += ball.vy;
+                        ball.x += ball.vx;
+
+                        if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                            ball.vy *= -0.7;
+                            ball.y = ball.y > canvas.height / 2 ? canvas.height - ball.radius : ball.radius;
+                        }
+                        if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                            ball.vx *= -0.7;
+                            ball.x = ball.x > canvas.width / 2 ? canvas.width - ball.radius : ball.radius;
+                        }
+
+                        textCollision(ball);
+
+                        if (Math.abs(ball.vx) < 0.01 && Math.abs(ball.vy) < 0.01) {
+                            ball.vx = 0;
+                            ball.vy = 0;
+                            ball.isMoving = false;
+                        }
+                    }
+                }
+            });
+
+            detectCollisions();
+            drawBalls();
+            requestAnimationFrame(update);
+        }
+
+        update();
+
+        canvas.addEventListener('mousedown', function(event) {
+            if (event.button === 1) {
+                explodeBalls();
+            }
+        });
+
+        function explodeBalls() {
+            // Apply a random high velocity to each ball to simulate an explosion
+            balls.forEach(ball => {
+                ball.vx = (Math.random() - 0.5) * 20;
+                ball.vy = (Math.random() - 0.5) * 20;
+                ball.isMoving = true;
+            });
+        }
+
+        for (let i = 0; i < numSmallBalls; i++) {
+            // Initialize smaller balls with random positions and velocities
+            const radius = 10 + Math.random() * 10;
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const color = colors[i % colors.length];
+
+            balls.push({
+                x: x,
+                y: y,
+                radius: radius,
+                color: color,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                isMoving: true
+            });
+        }
+
+        function drawBalls() {
+            // Clear the canvas and draw all balls
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(textCanvas, 0, 0);
+            balls.forEach(ball => {
+                ctx.fillStyle = ball.color;
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function update() {
+            // Update ball positions and detect collisions
+            balls.forEach(ball => {
+                if (ball.isMoving) {
+                    ball.vy += 0.2;
+                    ball.vx += 0;
+                    ball.vy *= friction;
+                    ball.vx *= friction;
+                    ball.y += ball.vy;
+                    ball.x += ball.vx;
+
+                    if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                        ball.vy *= -0.7;
+                        ball.y = ball.y > canvas.height / 2 ? canvas.height - ball.radius : ball.radius;
+                    }
+                    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                        ball.vx *= -0.7;
+                        ball.x = ball.x > canvas.width / 2 ? canvas.width - ball.radius : ball.radius;
+                    }
+
+                    textCollision(ball);
+
+                    if (Math.abs(ball.vx) < 0.01 && Math.abs(ball.vy) < 0.01) {
+                        ball.vx = 0;
+                        ball.vy = 0;
+                        ball.isMoving = false;
+                    }
+                }
+            });
+
+            detectCollisions();
+            drawBalls();
+            requestAnimationFrame(update);
+        }
+
+        update();
+    });
+</script>
+</body>
+</html>
