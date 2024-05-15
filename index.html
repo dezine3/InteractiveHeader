@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Bouncing Balls with Flinging and Header Text</title>
@@ -17,7 +20,6 @@
             height: 100%;
         }
 
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
     </style>
 </head>
 <body>
@@ -43,7 +45,7 @@
             // Adjust the font size of the text to fit the canvas width
             const maxFontSize = 100;
             let fontSize = maxFontSize;
-            textCtx.font = `${fontSize}px "Bebas Neue"`;
+            textCtx.font = `${fontSize}px "Bebas Neue", sans-serif`;
             let textWidth = textCtx.measureText(text).width;
             while (textWidth > textCanvas.width - 20 && fontSize > 10) {
                 fontSize -= 1;
@@ -78,7 +80,7 @@
             textCtx.textAlign = 'left';
             textCtx.textBaseline = 'bottom';
             textCtx.fillStyle = '#003865';
-            textCtx.font = '100px "Bebas Neue"';
+            textCtx.font = '6.25rem "Bebas Neue"';
             textCtx.fillText(text, textPosition.x, textPosition.y);
         }
 
